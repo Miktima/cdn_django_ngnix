@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.2'
 
 # хранилища
 volumes:
@@ -10,34 +10,54 @@ services:
         restart: always
 # только свежий nginx
         image: nginx:latest
-# слушает порт 8080
+# слушает порт 4321, 8042
         expose:
-          - 8080
-# мапаем порт 80 на его 8080. Тогда сайт будет доступен по адресу localhost. Убедись, что порт у тебя не занят.
+          - 4321
+          - 4322
+# мапаем порт 4321 на его 4321. Тогда сайт будет доступен по адресу localhost. Убедись, что порт у тебя не занят.
         ports:
-          - "80:8080"
+          - "4321:4321"
+          - "4322:4322"
 # монтируем только те директории, в которых лежит статика, т.к. nginx с динамикой не будет работать. Также директорию с логами и файл настройки, который мы подготовили.
         volumes:
-            - ./cdn/static:/srv/www/cdn/static
-            - ./cdn/media:/srv/www/cdn/media
-            - ./cdn/logs:/srv/www/cdn/logs
-            - ./docker/web:/etc/nginx/conf.d
+          - ./cdn/static_files:/srv/www/cdn/static
+          - ./cdn/logs:/srv/www/cdn/logs
+          - ./pagespeed/static_files:/srv/www/pagespeed/static
+          - ./pagespeed/logs:/srv/www/pagespeed/logs
+          - ./docker/web:/etc/nginx/conf.d
+          - ./docker/web/logs:/var/log/nginx
 # и nginx зависит от контейнера python. Т.е. python должен быть запущен первым
         depends_on:
-            - django
-    django:
+          - cdn
+          - pagespeed
+    cdn:
         restart: always
 # указываем откуда собирать образ
         build:
-            context: .
-            dockerfile: docker/django/Dockerfile
+          context: .
+          dockerfile: docker/cdn/Dockerfile
 # монтируем директорию проекта
         volumes:
-            - ./cdn:/srv/www/cdn
+          - ./cdn:/srv/www/cdn
         expose:
           - 8000
         ports:
-            - 8000:8000
+          - "8000:8000"
 # запускаем gunicorn
         command: "gunicorn -c gunicorn.py cdn.wsgi"
+    pagespeed:
+        restart: always
+# указываем откуда собирать образ
+        build:
+          context: .
+          dockerfile: docker/pagespeed/Dockerfile
+# монтируем директорию проекта
+        volumes:
+          - ./pagespeed:/srv/www/pagespeed
+        expose:
+          - 8001
+        ports:
+          - "8001:8001"
+# запускаем gunicorn
+        command: "gunicorn -c gunicorn.py pagespeed.wsgi"
 

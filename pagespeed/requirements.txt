@@ -1,0 +1,6 @@
+Django
+environs
+unicorn
+numpy
+gevent
+requests
